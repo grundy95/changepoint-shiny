@@ -1,13 +1,14 @@
 library(shiny)
 library(changepoint)
+library(ggplot2)
 
 ui <- navbarPage(title = "changepoint",
     tabPanel('Home',"Home Page"),
-    tabPanel('Simulated Data',
+    tabPanel('AMOC Simulated Data',
              fluidRow(
                  sidebarLayout(
                      sidebarPanel(
-                         tags$h1("Data Parameters"),
+                         tags$h2("Data Parameters"),
                          sliderInput(inputId = "n",
                                      label = "Length of data set",
                                      value = 200,
@@ -17,7 +18,7 @@ ui <- navbarPage(title = "changepoint",
                          uiOutput("tauControls"),
                          selectInput(inputId = 'changeType',
                                       label = 'Type of change',
-                                      choices = list('Mean' = 'mean', 'Variance' = 'var', 'Mean & Variance' = 'meanVar')),
+                                      choices = list('Mean', 'Variance', 'Mean & Variance')),
                          uiOutput("deltaControls")
                      ),
                      mainPanel(
@@ -28,14 +29,14 @@ ui <- navbarPage(title = "changepoint",
              fluidRow(
                  sidebarLayout(
                      sidebarPanel(
-                         tags$h1("Changepoint Parameters"),
+                         tags$h2("Changepoint Parameters"),
+                         uiOutput('cptTypeControls'),
                          selectInput(inputId = 'penalty',
                                      label = 'Penalty Choice',
-                                     choices = list('SIC'='SIC', 'BIC'='BIC', 'MBIC'='MBIC', 'AIC'='AIC', 'Hannan-Quinn'='Hannan-Quinn'),
+                                     choices = list('SIC'='SIC', 'BIC'='BIC', 'MBIC'='MBIC', 'AIC'='AIC', 'Hannan-Quinn'='Hannan-Quinn', 'Manual'='Manual'),
                                      selected='MBIC'
                          ),
-                         actionButton(inputId = 'cptEval',
-                                      label = 'Evaluate Changepoints')
+                         uiOutput('manPen')
                      ),
                      mainPanel(
                          verbatimTextOutput("cptSummary")
@@ -53,29 +54,36 @@ ui <- navbarPage(title = "changepoint",
 
 server <- function(input, output){
   data = reactive({
-    if(input$changeType == 'mean'){
-      c(rnorm(1:input$tau), rnorm((input$tau+1):input$n, input$deltaMean))
-    }else if(input$changeType == 'var'){
-      c(rnorm(1:input$tau), rnorm((input$tau+1):input$n, 0, input$deltaVar^2))
+    if(input$changeType == 'Mean'){
+      c(rnorm(input$tau), rnorm(input$n-input$tau, input$deltaMean))
+    }else if(input$changeType == 'Variance'){
+      c(rnorm(input$tau), rnorm(input$n-input$tau, 0, sqrt(input$deltaVar)))
     }else{
-      c(rnorm(1:input$tau), rnorm((input$tau+1):input$n, input$deltaMean, input$deltaVar^2))
+      c(rnorm(input$tau), rnorm(input$n-input$tau, input$deltaMean, sqrt(input$deltaVar)))
     }
   })
   output$ts = renderPlot({
-    ts.plot(data())
-  })
-  cptSum = eventReactive(input$cptEval,{
-    if(input$changeType == 'mean'){
-      summary(cpt.mean(data(),penalty=input$penalty))
-    }else if(input$changeType == 'var'){
-      summary(cpt.var(data(),penalty=input$penalty))
-    }else{
-      summary(cpt.meanvar(data(),penalty=input$penalty))
-    }
+    ggplot(mapping = aes(x=1:length(data()),y = data()))+
+      geom_line()+
+      labs(x='Time', y='Value')
   })
   output$cptSummary = renderPrint({
-    cptSum()
+    if(input$cptType == 'Mean'){
+      summary(cpt.mean(data(),penalty=input$penalty, pen.value = input$manPen))
+    }else if(input$cptType == 'Variance'){
+      summary(cpt.var(data(),penalty=input$penalty, pen.value = input$manPen))
+    }else{
+      summary(cpt.meanvar(data(),penalty=input$penalty, pen.value = input$manPen))
+    }
   }) 
+  output$cptTypeControls = renderUI({
+    selectInput(inputId = 'cptType',
+                label = 'Type of change to detect',
+                choices = list('Mean', 'Variance', 'Mean & Variance'),
+                selected = input$changeType
+    )
+  })
+    
   output$tauControls = renderUI({
     sliderInput(inputId = 'tau',
                 label = 'Change Location',
@@ -84,15 +92,26 @@ server <- function(input, output){
                 max = input$n-2,
                 step = 1)
   })
+  output$manPen = renderUI({
+    if(input$penalty == 'Manual'){
+      numericInput(inputId = 'manPen',
+                   label = 'Manual Penalty',
+                   value = 1,
+                   min = 0, 
+                   max = 10000,
+                   step =0.001
+      )
+    }
+  })
   output$deltaControls = renderUI({
-    if(input$changeType == 'mean'){
+    if(input$changeType == 'Mean'){
       sliderInput(inputId = 'deltaMean',
                   label = 'Mean change size',
                   value = 2,
                   min=-5,
                   max = 5,
                   step = 0.1)
-    }else if(input$changeType == 'var'){
+    }else if(input$changeType == 'Variance'){
       sliderInput(inputId = 'deltaVar',
                   label = 'Variance change size',
                   value = 3,
