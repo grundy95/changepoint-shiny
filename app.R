@@ -1,55 +1,72 @@
 library(shiny)
+library(shinythemes)
 library(changepoint)
 library(ggplot2)
 
-ui <- navbarPage(title = "changepoint",
-    tabPanel('Home',"Home Page"),
-    tabPanel('AMOC Simulated Data',
-             fluidRow(
-                 sidebarLayout(
-                     sidebarPanel(
-                         tags$h2("Data Parameters"),
-                         sliderInput(inputId = "n",
-                                     label = "Length of data set",
-                                     value = 200,
-                                     min = 20,
-                                     max = 2000,
-                                     step = 1),
-                         uiOutput("tauControls"),
-                         selectInput(inputId = 'changeType',
-                                      label = 'Type of change',
-                                      choices = list('Mean', 'Variance', 'Mean & Variance')),
-                         uiOutput("deltaControls")
-                     ),
-                     mainPanel(
-                        plotOutput("ts")
-                     )
-                 )
+ui <- navbarPage(
+  title = "changepoint",
+  theme = shinytheme("spacelab"),
+  tabPanel('Home',
+    h1("Welcome to the interactive shiny app for the", tags$a(href="https://CRAN.R-project.org/package=changepoint", target="_blank", "changepoint package.")),
+    p("This dashboard allows the user to explore changepoint analysis on some simple simulated data, as well as uploading data sets to perfrom changepoint analysis on without the need for any coding. Additionally, there are some example real world data sets where changepoint analysis can be applied."),
+    h3("AMOC Simulated Data"),
+    p("Here the user can create a simple data set with a single changepoint and see the output of changepoint analysis on the data."),
+    p("The user can control the following:", tags$ul(tags$li("Size of datasets"), tags$li("Changepoint Location"), tags$li("Type of Change"), tags$li("Size of Change"))),
+    p("Additionally, the user can control the changepoint analysis by changing:", tags$ul(tags$li("Type of change to detect"), tags$li("Penalty Choice"))),
+    h3("Load Data"),
+    p("Here the user can upload there own .csv file containg a data set they wish to do changepoint analysis upon."),
+    p("The user can alter the changepoint analysis to look for:", tags$ul(tags$li("Mean Changes"), tags$li("Variance Changes"), tags$li("Mean and Variance Changes"))),
+    p("Additionally, the user can choose between allowing for a single or multiple changepoints along with other parameters for the changepoint analysis"),
+    h3("Example Data Sets"),
+    p("This tab contains some common data sets where changepoint analysis is performed. This allows the user to alter some of the parameters of the changepoint analysis to see how this alters the segmentation of the data")
+  ),
+             
+  tabPanel('AMOC Simulated Data',
+         fluidRow(
+           sidebarLayout(
+             sidebarPanel(
+               tags$h3("Data Parameters"),
+               sliderInput(inputId = "n",
+                           label = "Length of data set",
+                           value = 200,
+                           min = 20,
+                           max = 2000,
+                           step = 1),
+               uiOutput("tauControls"),
+               selectInput(inputId = 'changeType',
+                           label = 'Type of change',
+                           choices = list('Mean', 'Variance', 'Mean & Variance')),
+               uiOutput("deltaControls")
              ),
-             fluidRow(
-                 sidebarLayout(
-                     sidebarPanel(
-                         tags$h2("Changepoint Parameters"),
-                         uiOutput('cptTypeControls'),
-                         selectInput(inputId = 'penalty',
-                                     label = 'Penalty Choice',
-                                     choices = list('SIC'='SIC', 'BIC'='BIC', 'MBIC'='MBIC', 'AIC'='AIC', 'Hannan-Quinn'='Hannan-Quinn', 'Manual'='Manual'),
-                                     selected='MBIC'
-                         ),
-                         uiOutput('manPen')
-                     ),
-                     mainPanel(
-                         verbatimTextOutput("cptSummary")
-                     )
-                 )
+             mainPanel(
+               plotOutput("ts")
              )
-    ),
-    tabPanel('Load Data',
-             'Tab for loading data and then doing changepoint analysis'
-    ),
-    tabPanel('Example Data Sets',
-             'A few examples from changpeoint package'
-    )
+           )
+         ),
+         fluidRow(
+           sidebarLayout(
+             sidebarPanel(
+               tags$h3("Changepoint Parameters"),
+               uiOutput('cptTypeControls'),
+               selectInput(inputId = 'penalty',
+                           label = 'Penalty Choice',
+                           choices = list('SIC'='SIC', 'BIC'='BIC', 'MBIC'='MBIC', 'AIC'='AIC', 'Hannan-Quinn'='Hannan-Quinn', 'Manual'='Manual'),
+                           selected='MBIC'
+               ),
+               uiOutput('manPen')
+             ),
+             mainPanel(
+               verbatimTextOutput("cptSummary")
+             )
+           )
+         )
+),
+  tabPanel('Load Data',
+           'Tab for loading data and then doing changepoint analysis'
+  ),
+  tabPanel('Example Data Sets',
+           'A few examples from changpeoint package'
+  )
 )
 
 server <- function(input, output){
@@ -83,7 +100,7 @@ server <- function(input, output){
                 selected = input$changeType
     )
   })
-    
+  
   output$tauControls = renderUI({
     sliderInput(inputId = 'tau',
                 label = 'Change Location',
@@ -121,21 +138,21 @@ server <- function(input, output){
     }else{
       tagList(
         sliderInput(inputId = 'deltaMean',
-                  label = 'Mean change size',
-                  value = 2,
-                  min=-5,
-                  max = 5,
-                  step = 0.1),
+                    label = 'Mean change size',
+                    value = 2,
+                    min=-5,
+                    max = 5,
+                    step = 0.1),
         sliderInput(inputId = 'deltaVar',
-                  label = 'Variance change size',
-                  value = 3,
-                  min = 0.1,
-                  max = 5,
-                  step = 0.1)
+                    label = 'Variance change size',
+                    value = 3,
+                    min = 0.1,
+                    max = 5,
+                    step = 0.1)
       )
-      }
+    }
   })
-}
+}             
 
 # Run the application 
 shinyApp(ui = ui, server = server)
